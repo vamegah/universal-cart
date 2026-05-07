@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+    <div class="container">
+        <h3>Universal Cart</h3>
+        <p>Items in cart: <span id="cartCount">0</span></p>
+        <section class="panel comparison-panel">
+            <strong>Current Page</strong>
+            <p id="currentPageStatus" class="muted">Open a supported product page to compare it.</p>
+            <div id="comparisonResult" class="comparison-result"></div>
+            <button id="compareBtn" class="secondary">Check Preferred Store</button>
+        </section>
+        <section class="panel">
+            <p id="accountStatus" class="account-status">Signed out</p>
+            <label>
+                Email
+                <input id="email" type="email" autocomplete="username" placeholder="you@example.com">
+            </label>
+            <label>
+                Password
+                <input id="password" type="password" autocomplete="current-password" placeholder="Password">
+            </label>
+            <div class="button-row">
+                <button id="loginBtn">Sign In</button>
+                <button id="signupBtn" class="secondary">Sign Up</button>
+                <button id="logoutBtn" class="ghost">Sign Out</button>
+            </div>
+        </section>
+        <label>
+            API URL
+            <input id="apiBaseUrl" type="url" placeholder="http://localhost:3001/api">
+        </label>
+        <label>
+            Web URL
+            <input id="webBaseUrl" type="url" placeholder="http://localhost:3000">
+        </label>
+        <label>
+            Auth token
+            <input id="authToken" type="password" placeholder="Optional manual bearer token">
+        </label>
+        <p id="status" class="status"></p>
+        <div class="button-row">
+            <button id="saveSettingsBtn">Save Settings</button>
+            <button id="openCartBtn" class="secondary">Open Cart</button>
+            <button id="refreshBtn" class="ghost">Refresh</button>
+        </div>
+    </div>
+    <script src="popup.js"></script>
+</body>
+
+</html>

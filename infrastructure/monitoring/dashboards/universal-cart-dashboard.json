@@ -1,0 +1,17 @@
+{
+  "dashboard": {
+    "title": "Universal Cart Monitoring",
+    "panels": [
+      {
+        "title": "API Requests per Second",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total[1m])",
+            "legendFormat": "{{method}} {{route}}"
+          }
+        ]
+      }
+    ]
+  }
+}

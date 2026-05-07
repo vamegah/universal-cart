@@ -1,0 +1,384 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String    // not used in MVP, placeholder
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  preferences   UserPreferences?
+  sessions      UserSession[]
+  cards         UserCard[]
+  carts         UniversalCart[]
+  autoBuyRules  AutoBuyRule[]
+  auditEvents   AuditEvent[]
+  virtualCardTransactions VirtualCardTransaction[]
+  settlementLedgerEntries SettlementLedgerEntry[]
+  savedLists    SavedList[]
+  savedListShares SavedListShare[]
+  savedListItemsAdded SavedListItem[] @relation("SavedListItemAddedBy")
+  savedListItemsUpdated SavedListItem[] @relation("SavedListItemUpdatedBy")
+  savedListItemsApproved SavedListItem[] @relation("SavedListItemApprovedBy")
+  alertSubscriptions AlertSubscription[]
+  shippingPlans UserShippingPlan[]
+  purchasedGiftCards PurchasedGiftCard[]
+}
+
+model UserSession {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String
+  tokenId   String
+  userAgent String?
+  ipAddress String?
+  revokedAt DateTime?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, revokedAt])
+  @@index([tokenHash])
+  @@index([expiresAt])
+}
+
+model UserPreferences {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id])
+  defaultStore   String?
+  defaultCardId  String?
+  shippingPref   Json?
+}
+
+model UserCard {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  retailerName   String   // e.g., "Macy's"
+  cardToken      String   // PCI token from payment provider
+  cardLast4      String
+  rewardsRate    Float    @default(0)
+  financingTerms Json?
+  createdAt      DateTime @default(now())
+
+  @@index([userId])
+  @@index([retailerName])
+}
+
+model Product {
+  id               String             @id @default(uuid())
+  name             String
+  brand            String?
+  model            String?
+  upc              String?            @unique
+  category         String?
+  imageUrl         String?
+  attributes       Json?
+  rawMetadata      Json?
+  retailerProducts RetailerProduct[]
+  cartItems        CartItem[]
+  savedListItems   SavedListItem[]
+  alertSubscriptions AlertSubscription[]
+}
+
+model RetailerProduct {
+  id          String   @id @default(uuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  retailerName String
+  retailerSku String
+  price       Float
+  shippingCost Float  @default(0)
+  taxRate     Float   @default(0)
+  url         String
+  inStock     Boolean @default(true)
+  sellerName  String?
+  isAuthorizedSeller Boolean @default(false)
+  returnWindowDays Int?
+  warrantySupport Boolean @default(false)
+  customerRating Float?
+  counterfeitRisk String @default("unknown")
+  lastUpdated DateTime @default(now())
+  matchResults MatchResult[]
+  priceHistory PriceHistory[]
+
+  @@unique([retailerName, retailerSku])
+  @@index([productId])
+  @@index([retailerName])
+  @@index([url])
+}
+
+model RetailerIntegrationConfig {
+  id                    String   @id @default(uuid())
+  retailerName          String   @unique
+  pricingRefreshCadence String   @default("manual_or_import_triggered")
+  catalogIngestionStatus String  @default("manual")
+  affiliateMode         String   @default("not_configured")
+  affiliateId           String?
+  partnershipStatus     String   @default("unverified")
+  partnerContactEmail   String?
+  notes                 String?
+  updatedAt             DateTime @updatedAt
+  createdAt             DateTime @default(now())
+
+  @@index([partnershipStatus])
+}
+
+model PriceHistory {
+  id                String          @id @default(uuid())
+  retailerProductId String
+  retailerProduct   RetailerProduct @relation(fields: [retailerProductId], references: [id], onDelete: Cascade)
+  price             Float
+  recordedAt        DateTime        @default(now())
+
+  @@index([retailerProductId, recordedAt])
+}
+
+model UniversalCart {
+  id         String     @id @default(uuid())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id])
+  createdAt  DateTime   @default(now())
+  status     String     @default("active") // active, converted, auto_bought
+  items      CartItem[]
+  splitPlans SplitPlan[]
+  autoBuyRules AutoBuyRule[]
+
+  @@index([userId, status])
+}
+
+model CartItem {
+  id              String         @id @default(uuid())
+  cartId          String
+  cart            UniversalCart  @relation(fields: [cartId], references: [id])
+  productId       String
+  product         Product        @relation(fields: [productId], references: [id])
+  sourceRetailer  String
+  quantity        Int            @default(1)
+  addedAt         DateTime       @default(now())
+  matchResults    MatchResult[]
+
+  @@index([cartId])
+  @@index([productId])
+  @@index([sourceRetailer])
+}
+
+model SavedList {
+  id        String          @id @default(uuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id])
+  name      String
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  items     SavedListItem[]
+  shares    SavedListShare[]
+
+  @@index([userId, updatedAt])
+}
+
+model SavedListItem {
+  id             String    @id @default(uuid())
+  listId         String
+  list           SavedList @relation(fields: [listId], references: [id])
+  productId      String
+  product        Product   @relation(fields: [productId], references: [id])
+  sourceRetailer String
+  quantity       Int       @default(1)
+  addedByUserId  String?
+  addedByUser    User?     @relation("SavedListItemAddedBy", fields: [addedByUserId], references: [id], onDelete: SetNull)
+  updatedByUserId String?
+  updatedByUser   User?    @relation("SavedListItemUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  approvedByUserId String?
+  approvedByUser   User?   @relation("SavedListItemApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  approvedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([listId])
+  @@index([productId])
+  @@index([addedByUserId])
+  @@index([approvedByUserId])
+}
+
+model SavedListShare {
+  id           String    @id @default(uuid())
+  listId       String
+  list         SavedList @relation(fields: [listId], references: [id])
+  userId       String
+  user         User      @relation(fields: [userId], references: [id])
+  invitedEmail String
+  role         String    @default("viewer") // viewer, contributor
+  metadata     Json?
+  createdAt    DateTime  @default(now())
+
+  @@unique([listId, userId])
+  @@index([userId])
+  @@index([listId])
+}
+
+model AlertSubscription {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id])
+  alertType       String   // price_drop, restock, transfer_opportunity, promo_expiration, card_offer
+  targetPrice     Float?
+  status          String   @default("active") // active, paused, triggered
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  lastTriggeredAt DateTime?
+
+  @@index([userId, status])
+  @@index([productId])
+  @@index([alertType])
+}
+
+model MatchResult {
+  id                 String         @id @default(uuid())
+  cartItemId         String
+  cartItem           CartItem       @relation(fields: [cartItemId], references: [id])
+  retailerProductId  String
+  retailerProduct    RetailerProduct @relation(fields: [retailerProductId], references: [id])
+  matchType          String         // exact, similar, substitute
+  confidenceScore    Float
+  isSelected         Boolean        @default(false)
+
+  @@index([cartItemId, isSelected])
+  @@index([retailerProductId])
+}
+
+model SplitPlan {
+  id         String   @id @default(uuid())
+  cartId     String
+  cart       UniversalCart @relation(fields: [cartId], references: [id])
+  assignment Json
+  totalCost  Float
+  createdAt  DateTime @default(now())
+
+  @@index([cartId])
+}
+
+model AutoBuyRule {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  cartId     String
+  cart       UniversalCart @relation(fields: [cartId], references: [id])
+  trigger    Json
+  subscriptionCadence Json?
+  destinationPref String // "split_optimized" or store name
+  executionCardId String?
+  status     String   @default("active") // active, executed, paused
+  createdAt  DateTime @default(now())
+  executedAt DateTime?
+
+  @@index([userId, status])
+  @@index([cartId])
+}
+
+model UserShippingPlan {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cartId    String?
+  planName  String
+  planData  Json
+  totalCost Float
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model VirtualCardTransaction {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  retailerName  String
+  amount        Float
+  virtualCardLast4 String
+  cardToken     String?
+  provider      String?
+  providerCardId String?
+  expiry        String?
+  metadata      Json?
+  status        String   // issued, charged, failed
+  createdAt     DateTime @default(now())
+  settlementLedgerEntries SettlementLedgerEntry[]
+
+  @@index([userId, createdAt])
+  @@index([retailerName])
+  @@index([providerCardId])
+}
+
+model SettlementLedgerEntry {
+  id                       String                  @id @default(uuid())
+  userId                   String
+  user                     User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cartId                   String?
+  virtualCardTransactionId String?
+  virtualCardTransaction   VirtualCardTransaction? @relation(fields: [virtualCardTransactionId], references: [id], onDelete: SetNull)
+  retailerName             String?
+  entryType                String                  // platform_charge, retailer_payout, platform_fee, refund, retailer_payout_reversal, platform_fee_reversal, failed_authorization
+  amount                   Float
+  currency                 String                  @default("USD")
+  status                   String                  @default("pending") // pending, posted, failed, reversed
+  metadata                 Json?
+  createdAt                DateTime                @default(now())
+
+  @@index([userId, createdAt])
+  @@index([cartId])
+  @@index([virtualCardTransactionId])
+  @@index([entryType, status])
+}
+
+model PurchasedGiftCard {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  retailerName    String
+  amount          Float
+  balance         Float
+  currency        String   @default("USD")
+  codeLast4       String
+  encryptedCode   String
+  encryptedPin    String?
+  brokerProvider  String
+  brokerReference String?
+  status          String   @default("active") // active, depleted, expired, refunded, flagged
+  expiresAt       DateTime?
+  fraudRisk       String   @default("unknown") // low, medium, high, unknown
+  buyerProtection Json?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([retailerName])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model AuditEvent {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  action      String
+  entityType  String
+  entityId    String?
+  summary     String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([entityType, entityId])
+  @@index([action])
+}

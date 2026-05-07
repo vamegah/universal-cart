@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: universal-cart-web
+  namespace: universal-cart
+  labels:
+    app: universal-cart
+    component: web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: universal-cart
+      component: web
+  template:
+    metadata:
+      labels:
+        app: universal-cart
+        component: web
+    spec:
+      containers:
+      - name: web
+        image: universal-cart/web:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NEXT_PUBLIC_API_URL
+          value: "https://api.universalcart.com"
+        - name: NODE_ENV
+          value: "production"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-service
+  namespace: universal-cart
+spec:
+  selector:
+    app: universal-cart
+    component: web
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 3000
+  type: ClusterIP

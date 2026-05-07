@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build and framework output
+dist/
+build/
+out/
+.next/
+coverage/
+*.tsbuildinfo
+
+# Test output
+test-results/
+playwright-report/
+
+# Local databases and generated clients
+*.db
+*.db-journal
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Mobile local state
+apps/mobile/.dart_tool/
+apps/mobile/.flutter-plugins
+apps/mobile/.flutter-plugins-dependencies
+apps/mobile/build/
+apps/mobile/android/local.properties
+apps/mobile/ios/Flutter/flutter_export_environment.sh

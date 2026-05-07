@@ -1,0 +1,21 @@
+# Default owners for everything
+* @universal-cart/engineering-leads
+
+# Backend and API
+/apps/api/ @universal-cart/backend-team
+/packages/retailer-client/ @universal-cart/backend-team
+/packages/matching-engine/ @universal-cart/ml-team
+
+# Frontend and UI
+/apps/web/ @universal-cart/frontend-team
+/packages/ui-kit/ @universal-cart/frontend-team
+
+# Mobile
+/apps/mobile/ @universal-cart/mobile-team
+
+# Infrastructure
+/infrastructure/ @universal-cart/devops-team
+/.github/workflows/ @universal-cart/devops-team
+
+# Documentation
+/docs/ @universal-cart/docs-team

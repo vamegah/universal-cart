@@ -1,0 +1,53 @@
+{
+  "name": "universal-cart-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:api": "npm run dev --workspace=@universal-cart/api",
+    "dev:web": "npm run dev --workspace=@universal-cart/web",
+    "build": "npm run build --workspaces",
+    "build:api": "npm run build --workspace=@universal-cart/api",
+    "build:web": "npm run build --workspace=@universal-cart/web",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:unit": "jest --config tests/unit/jest.config.js --runInBand",
+    "test:integration": "jest --config tests/integration/jest.config.js --runInBand",
+    "pretest:e2e": "node scripts/clean-web-build.js",
+    "test:e2e": "playwright test",
+    "test:load": "k6 run tests/load/k6-script.js",
+    "test:health": "node scripts/production-health-check.js",
+    "test:smoke": "node scripts/smoke-check.js",
+    "verify:stripe-issuing": "node scripts/verify-stripe-issuing-sandbox.js",
+    "package:extension": "node scripts/package-extension.js",
+    "validate:openapi": "node scripts/validate-openapi.js",
+    "generate:openapi": "node scripts/generate-openapi.js",
+    "security:audit": "npm audit --omit=dev --omit=optional --audit-level=high",
+    "seed": "node scripts/seed-db.js",
+    "update-products": "node scripts/update-retailer-products.js",
+    "train-model": "python scripts/train-matching-model.py",
+    "clean": "npm run clean --workspaces --if-present && rm -rf node_modules",
+    "prepare": "husky install"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.51.1",
+    "@types/jest": "^29.5.12",
+    "@types/supertest": "^6.0.2",
+    "concurrently": "^8.2.2",
+    "husky": "^8.0.3",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^30.3.0",
+    "supertest": "^6.3.3",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=11.0.0"
+  },
+  "packageManager": "npm@11.3.0"
+}

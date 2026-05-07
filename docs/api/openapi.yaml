@@ -1,0 +1,1890 @@
+openapi: 3.1.0
+info:
+  title: Universal Cart API
+  version: 0.2.0
+  description: >-
+    MVP API for authenticated universal cart import, matching, pricing comparison, checkout routing, audit trail, and
+    privacy controls.
+servers:
+  - url: http://localhost:3001/api
+    description: Local development
+security:
+  - bearerAuth: []
+paths:
+  /health/live:
+    get:
+      security: []
+      summary: API liveness check
+      responses:
+        '200':
+          description: API process is accepting requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthLive'
+  /health/ready:
+    get:
+      security: []
+      summary: API readiness check
+      description: Verifies database connectivity and reports configured integration readiness signals.
+      responses:
+        '200':
+          description: API is ready for traffic
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthReady'
+        '503':
+          description: API is alive but not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthReady'
+  /auth/signup:
+    post:
+      security: []
+      summary: Create an account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+      responses:
+        '201':
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+  /auth/login:
+    post:
+      security: []
+      summary: Log in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Error'
+  /auth/me:
+    get:
+      summary: Get current user
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/PublicUser'
+        '401':
+          $ref: '#/components/responses/Error'
+  /profile:
+    get:
+      summary: Get preferences and card reward references
+      responses:
+        '200':
+          description: Profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+  /profile/preferences:
+    put:
+      summary: Upsert shopping preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PreferencesInput'
+      responses:
+        '200':
+          description: Preferences saved
+  /profile/cards:
+    post:
+      summary: Add a tokenized card reward reference
+      description: >-
+        Raw card numbers are rejected. Store only provider-token references with explicit user consent; token references
+        are encrypted before persistence and never returned.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CardInput'
+      responses:
+        '201':
+          description: Card reference added
+        '400':
+          $ref: '#/components/responses/Error'
+  /profile/cards/{id}:
+    delete:
+      summary: Delete a card reward reference
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          $ref: '#/components/responses/Error'
+  /import/url:
+    post:
+      summary: Import a product from a supported retailer URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - url
+              properties:
+                url:
+                  type: string
+      responses:
+        '200':
+          description: Product imported and added to cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportedProduct'
+        '400':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+  /import/search:
+    post:
+      summary: Search supported retailers by keyword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - query
+              properties:
+                query:
+                  type: string
+                  minLength: 2
+                retailer:
+                  type: string
+                  nullable: true
+                  description: Optional supported retailer name, such as Amazon or Walmart.
+      responses:
+        '200':
+          description: Search results upserted into the product catalog
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductSearchResponse'
+        '400':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+  /cart:
+    get:
+      summary: Get or create the active universal cart
+      responses:
+        '200':
+          description: Active cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UniversalCart'
+    delete:
+      summary: Clear the active cart
+      responses:
+        '200':
+          description: Items removed
+  /cart/items:
+    post:
+      summary: Add a product to the active cart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - productId
+                - sourceRetailer
+              properties:
+                productId:
+                  type: string
+                sourceRetailer:
+                  type: string
+                quantity:
+                  type: integer
+                  minimum: 1
+      responses:
+        '200':
+          description: Item added
+  /cart/items/{id}/quantity:
+    put:
+      summary: Update cart item quantity
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - quantity
+              properties:
+                quantity:
+                  type: integer
+                  minimum: 1
+      responses:
+        '200':
+          description: Updated item
+  /cart/items/{id}:
+    delete:
+      summary: Remove a cart item
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204':
+          description: Removed
+  /lists:
+    get:
+      summary: List saved reusable carts
+      responses:
+        '200':
+          description: Saved lists
+    post:
+      summary: Create an empty saved list
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+      responses:
+        '201':
+          description: Saved list created
+  /lists/from-cart:
+    post:
+      summary: Save active cart as a reusable list
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+      responses:
+        '201':
+          description: Active cart saved
+  /lists/{id}/restore:
+    post:
+      summary: Add saved list items back into active cart
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Active cart after restore
+  /lists/accept-invite:
+    post:
+      summary: Accept a saved list invite token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+              properties:
+                token:
+                  type: string
+      responses:
+        '200':
+          description: Invite accepted
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+  /lists/{id}/share:
+    post:
+      summary: Share a saved list with an existing user
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                role:
+                  type: string
+                  enum:
+                    - viewer
+                    - contributor
+                  default: viewer
+      responses:
+        '201':
+          description: Saved list share created or updated
+        '404':
+          $ref: '#/components/responses/Error'
+  /lists/{id}/invite:
+    post:
+      summary: Create a saved list invite token
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                role:
+                  type: string
+                  enum:
+                    - viewer
+                    - contributor
+                  default: viewer
+      responses:
+        '201':
+          description: Invite created
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+  /lists/{id}/share/{shareId}:
+    delete:
+      summary: Remove a saved list share
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - name: shareId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Share removed
+  /lists/{id}/items:
+    post:
+      summary: Add an item to a saved list
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - productId
+                - sourceRetailer
+              properties:
+                productId:
+                  type: string
+                sourceRetailer:
+                  type: string
+                quantity:
+                  type: integer
+                  minimum: 1
+                  default: 1
+      responses:
+        '200':
+          description: Item quantity incremented
+        '201':
+          description: Item added
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+  /lists/{id}/items/{itemId}:
+    patch:
+      summary: Update a saved list item quantity or approval
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                quantity:
+                  type: integer
+                  minimum: 1
+                  maximum: 99
+                approved:
+                  type: boolean
+                  description: Marks the item approved by the authenticated owner or contributor.
+      responses:
+        '200':
+          description: Item updated
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+    delete:
+      summary: Remove an item from a saved list
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Removed
+        '404':
+          $ref: '#/components/responses/Error'
+  /lists/{id}:
+    get:
+      summary: Get one saved list
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Saved list
+        '404':
+          $ref: '#/components/responses/Error'
+    put:
+      summary: Rename a saved list
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+      responses:
+        '200':
+          description: Saved list renamed
+        '404':
+          $ref: '#/components/responses/Error'
+    delete:
+      summary: Delete a saved list
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204':
+          description: Deleted
+  /alerts:
+    get:
+      summary: List current user's alert subscriptions
+      responses:
+        '200':
+          description: Alert subscriptions
+    post:
+      summary: Create or update an active alert subscription for a product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - productId
+                - alertType
+              properties:
+                productId:
+                  type: string
+                alertType:
+                  type: string
+                  enum:
+                    - price_drop
+                    - restock
+                    - transfer_opportunity
+                    - promo_expiration
+                    - card_offer
+                targetPrice:
+                  type: number
+                  nullable: true
+      responses:
+        '201':
+          description: Alert subscription created
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+  /alerts/{id}:
+    patch:
+      summary: Update alert subscription status or target price
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - active
+                    - paused
+                    - triggered
+                targetPrice:
+                  type: number
+                  nullable: true
+      responses:
+        '200':
+          description: Alert subscription updated
+        '404':
+          $ref: '#/components/responses/Error'
+    delete:
+      summary: Delete an alert subscription
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '204':
+          description: Deleted
+  /match:
+    post:
+      summary: Generate a match for a product at a preferred store
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - product
+                - preferredStore
+              properties:
+                product:
+                  type: object
+                preferredStore:
+                  type: string
+      responses:
+        '200':
+          description: Match result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchResult'
+        '404':
+          $ref: '#/components/responses/Error'
+  /match/assistant:
+    post:
+      summary: Explain a match recommendation with cited product, pricing, and trust signals
+      tags:
+        - match
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - product
+              properties:
+                product:
+                  type: object
+                match:
+                  type: object
+      responses:
+        '200':
+          description: Match explanation
+        '400':
+          $ref: '#/components/responses/Error'
+  /match/select:
+    post:
+      summary: Persist selected match for a cart item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - cartItemId
+                - retailerProductId
+                - matchType
+              properties:
+                cartItemId:
+                  type: string
+                retailerProductId:
+                  type: string
+                matchType:
+                  type: string
+                confidence:
+                  type: number
+      responses:
+        '200':
+          description: Match selected
+  /match/candidates:
+    post:
+      summary: Persist match candidates for a cart item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - cartItemId
+                - candidates
+              properties:
+                cartItemId:
+                  type: string
+                selectedRetailerProductId:
+                  type: string
+                candidates:
+                  type: array
+                  items:
+                    type: object
+      responses:
+        '200':
+          description: Candidates saved
+  /pricing/compare:
+    post:
+      summary: Compare source and destination effective totals
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - cartItemId
+                - destinationRetailerProductId
+              properties:
+                cartItemId:
+                  type: string
+                destinationRetailerProductId:
+                  type: string
+      responses:
+        '200':
+          description: Pricing comparison
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingComparison'
+  /optimize:
+    post:
+      summary: Build a split-cart optimization plan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - items
+                - userStores
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - itemId
+                      - costs
+                    properties:
+                      itemId:
+                        type: string
+                      costs:
+                        type: object
+                        additionalProperties:
+                          type: number
+                      options:
+                        type: object
+                        additionalProperties:
+                          type: object
+                          properties:
+                            price:
+                              type: number
+                            shipping:
+                              type: number
+                            tax:
+                              type: number
+                            rewards:
+                              type: number
+                            available:
+                              type: boolean
+                userStores:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Split optimization plan
+  /shipping/optimize:
+    post:
+      summary: Compare shipping consolidation plans
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - items
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - itemId
+                      - options
+                    properties:
+                      itemId:
+                        type: string
+                      quantity:
+                        type: integer
+                        minimum: 1
+                      options:
+                        type: array
+                        items:
+                          type: object
+                          required:
+                            - store
+                          properties:
+                            store:
+                              type: string
+                            price:
+                              type: number
+                            shipping:
+                              type: number
+                            tax:
+                              type: number
+                            rewards:
+                              type: number
+                            etaDays:
+                              type: integer
+                            packageCount:
+                              type: integer
+                            pickupAvailable:
+                              type: boolean
+                            available:
+                              type: boolean
+      responses:
+        '200':
+          description: Cost-first, fewest-packages, and fastest-delivery plan comparison
+        '400':
+          $ref: '#/components/responses/Error'
+  /rules/parse:
+    post:
+      summary: Parse natural-language cart rules into structured rules
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - text
+              properties:
+                text:
+                  type: string
+      responses:
+        '200':
+          description: Parsed cart rules
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rules:
+                    type: object
+                    properties:
+                      exactMatchesOnly:
+                        type: boolean
+                      allowedCategories:
+                        type: array
+                        items:
+                          type: string
+                      avoidThirdPartySellers:
+                        type: boolean
+                      requireEasyReturns:
+                        type: boolean
+                      maxEtaDays:
+                        type: integer
+                        nullable: true
+        '400':
+          $ref: '#/components/responses/Error'
+  /checkout/stores:
+    get:
+      summary: List supported checkout stores
+      responses:
+        '200':
+          description: Supported stores
+    post:
+      summary: Get checkout support status for each store
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - items
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+      responses:
+        '200':
+          description: Store support statuses
+  /checkout/validate:
+    post:
+      summary: Validate checkout readiness
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckoutRequest'
+      responses:
+        '200':
+          description: Ready
+        '422':
+          $ref: '#/components/responses/Error'
+  /checkout/redirect:
+    post:
+      summary: Create a supported merchant redirect URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckoutRequest'
+      responses:
+        '200':
+          description: Redirect URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  redirectUrl:
+                    type: string
+                  routeType:
+                    type: string
+        '422':
+          $ref: '#/components/responses/Error'
+  /audit:
+    get:
+      summary: List current user's audit events
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+      responses:
+        '200':
+          description: Audit events
+  /analytics:
+    get:
+      summary: Get current user's MVP analytics and KPI summary
+      responses:
+        '200':
+          description: Analytics summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  kpis:
+                    type: object
+                    properties:
+                      cartImportCount:
+                        type: integer
+                      matchAccuracy:
+                        type: number
+                        nullable: true
+                      cartTransferConversion:
+                        type: number
+                        nullable: true
+                      checkoutCompletionRate:
+                        type: number
+                        nullable: true
+                      dailyActiveDays:
+                        type: integer
+                      activeCartCount:
+                        type: integer
+                      cartItemCount:
+                        type: integer
+                      matchedCartItemCount:
+                        type: integer
+                  breakdowns:
+                    type: object
+                  recentActivity:
+                    type: array
+                    items:
+                      type: object
+  /admin/retailers:
+    get:
+      summary: Admin retailer integration health overview
+      description: Requires bearer auth and an email listed in ADMIN_EMAILS.
+      responses:
+        '200':
+          description: Retailer integration overview
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  generatedAt:
+                    type: string
+                    format: date-time
+                  retailers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        domains:
+                          type: array
+                          items:
+                            type: string
+                        adapterConfigured:
+                          type: boolean
+                        catalogListingCount:
+                          type: integer
+                        pricingRefreshCadence:
+                          type: string
+                        catalogIngestionStatus:
+                          type: string
+                        affiliateMode:
+                          type: string
+                        affiliateId:
+                          type: string
+                          nullable: true
+                        partnershipStatus:
+                          type: string
+                        partnerContactEmail:
+                          type: string
+                          nullable: true
+                        notes:
+                          type: string
+                          nullable: true
+                        configUpdatedAt:
+                          type: string
+                          nullable: true
+                        health:
+                          type: string
+        '403':
+          $ref: '#/components/responses/Error'
+  /admin/retailers/{retailerName}:
+    patch:
+      summary: Admin updates retailer integration configuration
+      description: Requires bearer auth and an email listed in ADMIN_EMAILS.
+      parameters:
+        - name: retailerName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                pricingRefreshCadence:
+                  type: string
+                  enum: [manual_or_import_triggered, hourly, daily, weekly, paused]
+                catalogIngestionStatus:
+                  type: string
+                  enum: [manual, scheduled, paused, blocked]
+                affiliateMode:
+                  type: string
+                  enum: [not_configured, manual_links, network_feed, partner_api]
+                affiliateId:
+                  type: string
+                  nullable: true
+                partnershipStatus:
+                  type: string
+                  enum: [unverified, outreach, contracting, partnered, blocked]
+                partnerContactEmail:
+                  type: string
+                  nullable: true
+                notes:
+                  type: string
+                  nullable: true
+      responses:
+        '200':
+          description: Retailer configuration updated
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+  /admin/matches:
+    get:
+      summary: Admin low-confidence match review queue
+      description: Requires bearer auth and an email listed in ADMIN_EMAILS.
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Match review queue
+        '403':
+          $ref: '#/components/responses/Error'
+  /admin/matches/{cartItemId}/select:
+    post:
+      summary: Admin manually selects a match for a cart item
+      description: Requires bearer auth and an email listed in ADMIN_EMAILS.
+      parameters:
+        - name: cartItemId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - retailerProductId
+              properties:
+                retailerProductId:
+                  type: string
+                matchType:
+                  type: string
+                  enum:
+                    - exact
+                    - similar
+                    - close
+                    - substitute
+                confidence:
+                  type: number
+      responses:
+        '200':
+          description: Selected match
+        '404':
+          $ref: '#/components/responses/Error'
+  /privacy/export:
+    get:
+      summary: Export current user's account data
+      responses:
+        '200':
+          description: Account data export
+  /privacy/account:
+    delete:
+      summary: Delete current user's account data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - confirmation
+              properties:
+                confirmation:
+                  type: string
+                  enum:
+                    - DELETE
+      responses:
+        '200':
+          description: Account deleted
+  /budget/summary:
+    get:
+      summary: Get monthly spend summary and budget alerts
+      responses:
+        '200':
+          description: Budget summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetSummary'
+  /budget/alerts:
+    post:
+      summary: Subscribe to a budget threshold alert
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - alertType
+              properties:
+                alertType:
+                  type: string
+                  enum:
+                    - budget_exceeded
+                    - monthly_cap_warning
+                    - monthly_cap_reached
+                targetAmount:
+                  type: number
+                  nullable: true
+      responses:
+        '201':
+          description: Alert set
+        '400':
+          $ref: '#/components/responses/Error'
+  /copilot/recommend:
+    post:
+      summary: Generate auditable pending shopping copilot recommendations
+      tags:
+        - copilot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - command
+                - items
+              properties:
+                command:
+                  type: string
+                items:
+                  type: array
+                  items:
+                    type: object
+                userStores:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Copilot recommendations
+        '400':
+          $ref: '#/components/responses/Error'
+  /giftcards:
+    get:
+      summary: List purchased gift cards with balance and risk metadata
+      tags:
+        - giftcards
+      responses:
+        '200':
+          description: Purchased gift cards
+  /giftcards/purchase:
+    post:
+      summary: Purchase a tracked gift card when a broker is configured
+      tags:
+        - giftcards
+      responses:
+        '201':
+          description: Gift card purchased
+        '400':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+  /optimize/global:
+    post:
+      summary: Build a global split-cart optimization plan
+      tags:
+        - optimize
+      responses:
+        '200':
+          description: Global split plan
+        '400':
+          $ref: '#/components/responses/Error'
+  /optimize/{cartId}/suggestions:
+    get:
+      summary: Get split-plan threshold unlock suggestions
+      tags:
+        - optimize
+      responses:
+        '200':
+          description: Threshold suggestions
+        '404':
+          $ref: '#/components/responses/Error'
+      parameters:
+        - name: cartId
+          in: path
+          required: true
+          schema:
+            type: string
+  /optimize/{cartId}/bundles:
+    get:
+      summary: Get cross-retailer bundle suggestions
+      tags:
+        - optimize
+      responses:
+        '200':
+          description: Bundle suggestions
+        '404':
+          $ref: '#/components/responses/Error'
+      parameters:
+        - name: cartId
+          in: path
+          required: true
+          schema:
+            type: string
+  /pricing/{retailerProductId}/history:
+    get:
+      summary: Get retailer product price history and trend
+      tags:
+        - pricing
+      responses:
+        '200':
+          description: Price history
+        '400':
+          $ref: '#/components/responses/Error'
+      parameters:
+        - name: retailerProductId
+          in: path
+          required: true
+          schema:
+            type: string
+  /autobuy:
+    get:
+      summary: List auto-buy rules
+      tags:
+        - autobuy
+      responses:
+        '200':
+          description: Auto-buy rules
+    post:
+      summary: Create an auto-buy rule
+      tags:
+        - autobuy
+      responses:
+        '201':
+          description: Rule created
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+  /autobuy/{id}:
+    patch:
+      summary: Update an auto-buy rule
+      tags:
+        - autobuy
+      responses:
+        '200':
+          description: Rule updated
+        '400':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+    delete:
+      summary: Delete an auto-buy rule
+      tags:
+        - autobuy
+      responses:
+        '204':
+          description: Rule deleted
+        '404':
+          $ref: '#/components/responses/Error'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+  /checkout/financing-options:
+    get:
+      summary: List eligible financing options with repayment costs
+      tags:
+        - checkout
+      responses:
+        '200':
+          description: Financing options
+        '400':
+          $ref: '#/components/responses/Error'
+  /virtualcards/provider-status:
+    get:
+      summary: Check virtual card provider readiness and sandbox gates
+      tags:
+        - virtualcards
+      responses:
+        '200':
+          description: Provider readiness status
+  /virtualcards/issue:
+    post:
+      summary: Issue a merchant-limited virtual card
+      tags:
+        - virtualcards
+      responses:
+        '201':
+          description: Virtual card issued
+        '400':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+  /virtualcards/checkout:
+    post:
+      summary: Checkout a cart with provider virtual cards
+      tags:
+        - virtualcards
+      responses:
+        '200':
+          description: Virtual checkout result
+        '400':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+  /docs:
+    get:
+      summary: Download the generated OpenAPI document
+      tags:
+        - docs
+      responses:
+        '200':
+          description: OpenAPI YAML document
+      security: []
+  /docs/ui:
+    get:
+      summary: View interactive API documentation
+      tags:
+        - docs
+      responses:
+        '200':
+          description: Swagger UI HTML
+      security: []
+  /auth/refresh:
+    post:
+      summary: Rotate the current persisted session token
+      tags:
+        - auth
+      responses:
+        '200':
+          description: Session refreshed
+        '401':
+          $ref: '#/components/responses/Error'
+  /auth/logout:
+    post:
+      summary: Revoke the current persisted client session
+      tags:
+        - auth
+      responses:
+        '204':
+          description: Logged out
+        '401':
+          $ref: '#/components/responses/Error'
+  /admin/analytics:
+    get:
+      summary: Admin global analytics and KPI dashboard
+      tags:
+        - admin
+      responses:
+        '200':
+          description: Global analytics
+        '403':
+          $ref: '#/components/responses/Error'
+  /admin/seller-trust:
+    get:
+      summary: Admin seller trust review queue
+      tags:
+        - admin
+      responses:
+        '200':
+          description: Seller trust queue
+        '403':
+          $ref: '#/components/responses/Error'
+  /admin/seller-trust/{retailerProductId}:
+    patch:
+      summary: Admin updates seller trust signals
+      tags:
+        - admin
+      responses:
+        '200':
+          description: Seller trust listing updated
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+      parameters:
+        - name: retailerProductId
+          in: path
+          required: true
+          schema:
+            type: string
+  /admin/matches/{matchId}/reject:
+    post:
+      summary: Admin rejects a match candidate or blacklists listing
+      tags:
+        - admin
+      responses:
+        '200':
+          description: Match rejected
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          schema:
+            type: string
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    Error:
+      description: Error response
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+  schemas:
+    HealthLive:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        service:
+          type: string
+          example: universal-cart-api
+        timestamp:
+          type: string
+          format: date-time
+    HealthReady:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+            - degraded
+        service:
+          type: string
+          example: universal-cart-api
+        timestamp:
+          type: string
+          format: date-time
+        checks:
+          type: object
+          additionalProperties: true
+    AuthRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        sessionId:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        user:
+          $ref: '#/components/schemas/PublicUser'
+    PublicUser:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    Profile:
+      type: object
+      properties:
+        preferences:
+          type: object
+          nullable: true
+        cards:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicCard'
+    PreferencesInput:
+      type: object
+      properties:
+        defaultStore:
+          type: string
+          nullable: true
+        defaultCardId:
+          type: string
+          nullable: true
+        shippingPref:
+          type: object
+          nullable: true
+    CardInput:
+      type: object
+      required:
+        - retailerName
+        - cardToken
+        - cardLast4
+        - consentAccepted
+      properties:
+        retailerName:
+          type: string
+        cardToken:
+          type: string
+          description: Tokenized provider reference such as tok_*, pm_*, card_*, src_*, or vc_*; raw PAN/CVV values are rejected.
+        cardLast4:
+          type: string
+          pattern: ^[0-9]{4}$
+        rewardsRate:
+          type: number
+          minimum: 0
+          maximum: 1
+        consentAccepted:
+          type: boolean
+          const: true
+          description: User confirmation that this is a tokenized reference and may be stored for rewards/preferences.
+        financingTerms:
+          type: object
+          nullable: true
+    PublicCard:
+      type: object
+      properties:
+        id:
+          type: string
+        retailerName:
+          type: string
+        cardLast4:
+          type: string
+        rewardsRate:
+          type: number
+        financingTerms:
+          type: object
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    ImportedProduct:
+      type: object
+      properties:
+        id:
+          type: string
+        cartItemId:
+          type: string
+        retailerProductId:
+          type: string
+        sourceRetailer:
+          type: string
+        productName:
+          type: string
+        price:
+          type: number
+        imageUrl:
+          type: string
+          nullable: true
+        url:
+          type: string
+    ProductSearchResponse:
+      type: object
+      properties:
+        query:
+          type: string
+        retailer:
+          type: string
+          nullable: true
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              rank:
+                type: integer
+              retailerRank:
+                type: integer
+              productId:
+                type: string
+              retailerProductId:
+                type: string
+              retailerSku:
+                type: string
+              sourceRetailer:
+                type: string
+              productName:
+                type: string
+              price:
+                type: number
+              imageUrl:
+                type: string
+                nullable: true
+              url:
+                type: string
+              brand:
+                type: string
+                nullable: true
+              model:
+                type: string
+                nullable: true
+              upc:
+                type: string
+                nullable: true
+              category:
+                type: string
+                nullable: true
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              retailer:
+                type: string
+              error:
+                type: string
+    UniversalCart:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        status:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+    CartItem:
+      type: object
+      properties:
+        id:
+          type: string
+        productId:
+          type: string
+        sourceRetailer:
+          type: string
+        quantity:
+          type: integer
+        matchType:
+          type: string
+          nullable: true
+        matchConfidence:
+          type: number
+          nullable: true
+        confidenceScore:
+          type: number
+          nullable: true
+        selectedRetailerProductId:
+          type: string
+          nullable: true
+        matchedRetailer:
+          type: string
+          nullable: true
+        matchedPrice:
+          type: number
+          nullable: true
+        matchedUrl:
+          type: string
+          nullable: true
+        product:
+          $ref: '#/components/schemas/Product'
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        brand:
+          type: string
+          nullable: true
+        model:
+          type: string
+          nullable: true
+        upc:
+          type: string
+          nullable: true
+        category:
+          type: string
+          nullable: true
+    MatchResult:
+      type: object
+      properties:
+        matchType:
+          type: string
+          enum:
+            - exact
+            - similar
+            - substitute
+            - none
+        confidence:
+          type: number
+        reason:
+          type: string
+        retailerProduct:
+          $ref: '#/components/schemas/RetailerProduct'
+    RetailerProduct:
+      type: object
+      properties:
+        id:
+          type: string
+        retailerName:
+          type: string
+        retailerSku:
+          type: string
+        price:
+          type: number
+        url:
+          type: string
+        inStock:
+          type: boolean
+        sellerName:
+          type: string
+          nullable: true
+        isAuthorizedSeller:
+          type: boolean
+        returnWindowDays:
+          type: integer
+          nullable: true
+        warrantySupport:
+          type: boolean
+        customerRating:
+          type: number
+          nullable: true
+        counterfeitRisk:
+          type: string
+          enum:
+            - unknown
+            - low
+            - medium
+            - high
+        sellerTrustScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+        sellerTrustLabel:
+          type: string
+          enum:
+            - strong
+            - acceptable
+            - review
+        sellerTrustSignals:
+          type: array
+          items:
+            type: string
+    PricingComparison:
+      type: object
+      properties:
+        cartItemId:
+          type: string
+        source:
+          type: object
+          nullable: true
+        destination:
+          type: object
+        recommendation:
+          type: object
+    BudgetSummary:
+      type: object
+      properties:
+        currentMonthSpend:
+          type: number
+        currentMonthCheckouts:
+          type: integer
+        monthlyFinancingCap:
+          type: number
+          nullable: true
+        maxOrderBudget:
+          type: number
+          nullable: true
+        preferredInstallmentAmount:
+          type: number
+          nullable: true
+        capUsedPercent:
+          type: integer
+          nullable: true
+        alerts:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+              message:
+                type: string
+    CheckoutRequest:
+      type: object
+      required:
+        - items
+        - store
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+        store:
+          type: string
