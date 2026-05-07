@@ -69,7 +69,7 @@ describe('virtual card provider readiness', () => {
 
   it('rejects mock readiness in production', () => {
     process.env.ENABLE_MOCK_PAYMENTS = 'true';
-    process.env.NODE_ENV = 'production';
+    process.env['NODE_ENV'] = 'production';
 
     expect(getVirtualCardProviderReadiness()).toMatchObject({
       ready: false,
