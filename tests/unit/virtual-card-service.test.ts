@@ -79,7 +79,7 @@ describe('virtualCardService', () => {
     } else {
       process.env.ENABLE_MOCK_PAYMENTS = originalMockPayments;
     }
-    process.env['NODE_ENV'] = originalNodeEnv;
+    Object.assign(process.env, { NODE_ENV: originalNodeEnv });
   });
 
   it('issues a provider token-backed card without returning raw card data', async () => {
@@ -103,7 +103,7 @@ describe('virtualCardService', () => {
 
   it('refuses mock virtual cards in production even if the mock flag is set', async () => {
     process.env.ENABLE_MOCK_PAYMENTS = 'true';
-    process.env['NODE_ENV'] = 'production';
+    Object.assign(process.env, { NODE_ENV: 'production' });
 
     await expect(issueVirtualCard(42.5, 'Target', 'user-1')).rejects.toThrow(
       'Mock virtual cards cannot be enabled in production'

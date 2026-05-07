@@ -47,7 +47,7 @@ describe('gift card broker mock adapter', () => {
     } else {
       process.env.ENABLE_MOCK_PAYMENTS = originalFlag;
     }
-    process.env['NODE_ENV'] = originalNodeEnv;
+    Object.assign(process.env, { NODE_ENV: originalNodeEnv });
     delete process.env.GIFT_CARD_MAX_DAILY_COUNT;
     delete process.env.GIFT_CARD_MAX_DAILY_AMOUNT;
     delete process.env.GIFT_CARD_MAX_SINGLE_AMOUNT;
@@ -145,7 +145,7 @@ describe('gift card broker mock adapter', () => {
 
   it('refuses mock gift cards in production even if the mock flag is set', async () => {
     process.env.ENABLE_MOCK_PAYMENTS = 'true';
-    process.env['NODE_ENV'] = 'production';
+    Object.assign(process.env, { NODE_ENV: 'production' });
 
     await expect(new MockGiftCardBrokerAdapter().purchaseGiftCard('Target', 25)).rejects.toThrow(
       'Mock gift card broker cannot be enabled in production'
