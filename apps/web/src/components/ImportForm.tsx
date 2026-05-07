@@ -44,28 +44,34 @@ export default function ImportForm() {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6 mb-8">
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-lg font-semibold">Import from any store</h2>
-        <div className="inline-flex rounded-lg border border-gray-200 p-1 text-sm">
+    <section className="uc-panel overflow-hidden">
+      <div className="border-b border-slate-200 px-5 py-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="uc-label">Product Intake</p>
+            <h2 className="mt-1 text-lg font-semibold text-slate-950">Import from any store</h2>
+          </div>
+          <div className="uc-segment">
           <button
             type="button"
             onClick={() => setMode('url')}
-            className={mode === 'url' ? 'rounded-md bg-blue-600 px-3 py-1.5 text-white' : 'rounded-md px-3 py-1.5 text-gray-700'}
+            className={`uc-segment-button ${mode === 'url' ? 'uc-segment-button-active' : ''}`}
           >
             URL
           </button>
           <button
             type="button"
             onClick={() => setMode('search')}
-            className={mode === 'search' ? 'rounded-md bg-blue-600 px-3 py-1.5 text-white' : 'rounded-md px-3 py-1.5 text-gray-700'}
+            className={`uc-segment-button ${mode === 'search' ? 'uc-segment-button-active' : ''}`}
           >
             Search
           </button>
+          </div>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-2 sm:flex-row" aria-label={mode === 'url' ? 'Import product by URL' : 'Search products'}>
+      <div className="p-5">
+      <form onSubmit={handleSubmit} className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto]" aria-label={mode === 'url' ? 'Import product by URL' : 'Search products'}>
         {mode === 'url' ? (
           <>
             <label htmlFor={productUrlInputId} className="sr-only">
@@ -77,7 +83,7 @@ export default function ImportForm() {
               placeholder="Paste product URL (Amazon, Walmart, Target...)"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              className="min-w-0 flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="uc-input w-full min-w-0 lg:col-span-2"
               aria-describedby={importError ? 'product-url-error' : undefined}
               aria-invalid={Boolean(importError)}
               required
@@ -94,7 +100,7 @@ export default function ImportForm() {
               placeholder="Search for headphones, coffee, gifts..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="min-w-0 flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="uc-input w-full min-w-0"
               aria-describedby={searchError ? 'product-search-error' : undefined}
               aria-invalid={Boolean(searchError)}
               required
@@ -106,7 +112,7 @@ export default function ImportForm() {
               id="product-search-retailer"
               value={retailer}
               onChange={(e) => setRetailer(e.target.value)}
-              className="rounded-lg border px-3 py-2"
+              className="uc-input"
             >
               {RETAILER_OPTIONS.map((option) => (
                 <option key={option || 'all'} value={option}>
@@ -119,7 +125,7 @@ export default function ImportForm() {
         <button
           type="submit"
           disabled={isImporting || isSearching}
-          className="w-full bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 sm:w-auto"
+          className="uc-button-primary min-h-10 w-full whitespace-nowrap lg:w-auto"
         >
           {mode === 'url'
             ? isImporting ? 'Importing...' : 'Add to Cart'
@@ -127,24 +133,24 @@ export default function ImportForm() {
         </button>
       </form>
       {searchError && (
-        <p id="product-search-error" role="alert" className="text-red-500 mt-2 text-sm">
+        <p id="product-search-error" role="alert" className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-800">
           {searchError}
         </p>
       )}
       {importError && (
-        <p id="product-url-error" role="alert" className="text-red-500 mt-2 text-sm">
+        <p id="product-url-error" role="alert" className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-800">
           {importError}
         </p>
       )}
       {importError === 'Authentication required' && (
         <p className="text-sm mt-2">
-          <Link href="/account" className="text-blue-600 hover:underline">Log in or create an account</Link>
+          <Link href="/account" className="font-semibold text-cyan-700 hover:text-cyan-900">Log in or create an account</Link>
         </p>
       )}
       {mode === 'search' && searchResults.length > 0 && (
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="mt-5 grid gap-3 md:grid-cols-2">
           {searchResults.slice(0, 6).map((result) => (
-            <article key={`${result.retailerProductId}-${result.rank}`} className="rounded border border-gray-200 p-3">
+            <article key={`${result.retailerProductId}-${result.rank}`} className="rounded-md border border-slate-200 bg-slate-50 p-3">
               <div className="flex gap-3">
                 {result.imageUrl ? (
                   <Image
@@ -152,18 +158,18 @@ export default function ImportForm() {
                     alt={result.productName}
                     width={64}
                     height={64}
-                    className="h-16 w-16 rounded object-cover"
+                    className="h-16 w-16 rounded-md border border-slate-200 bg-white object-cover"
                   />
                 ) : (
-                  <div className="h-16 w-16 rounded bg-gray-100" aria-hidden="true" />
+                  <div className="h-16 w-16 rounded-md bg-slate-200" aria-hidden="true" />
                 )}
                 <div className="min-w-0 flex-1">
-                  <h3 className="truncate text-sm font-semibold">{result.productName}</h3>
-                  <p className="text-sm text-gray-500">
-                    {result.sourceRetailer} - ${Number(result.price || 0).toFixed(2)}
+                  <h3 className="truncate text-sm font-semibold text-slate-950">{result.productName}</h3>
+                  <p className="text-sm text-slate-500">
+                    {result.sourceRetailer} · ${Number(result.price || 0).toFixed(2)}
                   </p>
                   {result.brand || result.category ? (
-                    <p className="truncate text-xs text-gray-500">{[result.brand, result.category].filter(Boolean).join(' - ')}</p>
+                    <p className="truncate text-xs text-slate-500">{[result.brand, result.category].filter(Boolean).join(' · ')}</p>
                   ) : null}
                 </div>
               </div>
@@ -171,7 +177,7 @@ export default function ImportForm() {
                 type="button"
                 onClick={() => importSearchResult(result)}
                 disabled={isImporting}
-                className="mt-3 w-full rounded bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+                className="uc-button-secondary mt-3 w-full"
               >
                 {isImporting ? 'Adding...' : 'Add result'}
               </button>
@@ -179,6 +185,7 @@ export default function ImportForm() {
           ))}
         </div>
       )}
-    </div>
+      </div>
+    </section>
   );
 }

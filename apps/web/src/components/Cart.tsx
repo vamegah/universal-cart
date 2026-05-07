@@ -12,16 +12,16 @@ function CartSkeleton() {
   return (
     <div className="space-y-4">
       {[0, 1, 2].map((index) => (
-        <div key={index} className="rounded-lg bg-white p-5 shadow">
-          <div className="h-4 w-2/5 rounded bg-gray-200" />
-          <div className="mt-3 h-3 w-3/5 rounded bg-gray-100" />
+        <div key={index} className="uc-panel p-5">
+          <div className="h-4 w-2/5 rounded bg-slate-200" />
+          <div className="mt-3 h-3 w-3/5 rounded bg-slate-100" />
           <div className="mt-5 grid gap-3 sm:grid-cols-[80px_1fr_160px]">
-            <div className="h-20 rounded bg-gray-100" />
+            <div className="h-20 rounded bg-slate-100" />
             <div className="space-y-2">
-              <div className="h-3 rounded bg-gray-100" />
-              <div className="h-3 w-2/3 rounded bg-gray-100" />
+              <div className="h-3 rounded bg-slate-100" />
+              <div className="h-3 w-2/3 rounded bg-slate-100" />
             </div>
-            <div className="h-9 rounded bg-gray-100" />
+            <div className="h-9 rounded bg-slate-100" />
           </div>
         </div>
       ))}
@@ -46,10 +46,10 @@ export default function Cart() {
 
   if (items.length === 0) {
     return (
-      <div className="rounded-lg bg-white p-8 text-center shadow">
-        <h2 className="text-xl font-semibold">Your cart is empty</h2>
-        <p className="mt-2 text-gray-500">Import a product from the dashboard to start comparing stores.</p>
-        <Link href="/" className="mt-4 inline-flex rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+      <div className="uc-panel p-10 text-center">
+        <h2 className="text-xl font-semibold text-slate-950">Your cart is empty</h2>
+        <p className="mt-2 text-sm text-slate-500">Import a product from the dashboard to start comparing stores.</p>
+        <Link href="/" className="uc-button-primary mt-5">
           Add products
         </Link>
       </div>
@@ -59,31 +59,31 @@ export default function Cart() {
   return (
     <div className="space-y-6">
       <div className="grid gap-3 md:grid-cols-4">
-        <div className="rounded-lg bg-white p-4 shadow">
-          <p className="text-sm text-gray-500">Product groups</p>
-          <p className="text-2xl font-bold">{groups.length}</p>
+        <div className="uc-kpi">
+          <p className="uc-label">Product groups</p>
+          <p className="uc-value">{groups.length}</p>
         </div>
-        <div className="rounded-lg bg-white p-4 shadow">
-          <p className="text-sm text-gray-500">Matched items</p>
-          <p className="text-2xl font-bold">
+        <div className="uc-kpi">
+          <p className="uc-label">Matched items</p>
+          <p className="uc-value">
             {matchedItems}/{items.length}
           </p>
         </div>
-        <div className="rounded-lg bg-white p-4 shadow">
-          <p className="text-sm text-gray-500">Grouped duplicates</p>
-          <p className="text-2xl font-bold">{groupedDuplicateCount}</p>
+        <div className="uc-kpi">
+          <p className="uc-label">Grouped duplicates</p>
+          <p className="uc-value">{groupedDuplicateCount}</p>
         </div>
-        <div className="rounded-lg bg-white p-4 shadow">
-          <p className="text-sm text-gray-500">Estimated total</p>
-          <p className="text-2xl font-bold">${total.toFixed(2)}</p>
+        <div className="uc-kpi">
+          <p className="uc-label">Estimated total</p>
+          <p className="uc-value">${total.toFixed(2)}</p>
         </div>
       </div>
 
-      <div className="rounded-lg bg-white p-4 shadow">
-        <p className="text-sm font-medium text-gray-700">Source retailers</p>
+      <div className="uc-panel p-4">
+        <p className="uc-label">Source retailers</p>
         <div className="mt-2 flex flex-wrap gap-2">
           {sourceRetailers.map((retailer) => (
-            <span key={retailer} className="rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700">
+            <span key={retailer} className="uc-pill">
               {retailer}
             </span>
           ))}
@@ -96,16 +96,16 @@ export default function Cart() {
         ))}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-white p-4 shadow">
+      <div className="uc-panel flex flex-wrap items-center justify-between gap-3 p-5">
         <div>
-          <p className="text-sm text-gray-500">Cart total</p>
-          <p className="text-xl font-bold">${total.toFixed(2)}</p>
+          <p className="uc-label">Cart total</p>
+          <p className="mt-1 text-xl font-semibold text-slate-950">${total.toFixed(2)}</p>
         </div>
         <div className="flex flex-wrap items-center gap-4">
-          <button type="button" onClick={clearCart} className="text-sm font-medium text-red-600 hover:text-red-700">
+          <button type="button" onClick={clearCart} className="uc-button-danger">
             Clear cart
           </button>
-          <Link href="/checkout" className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+          <Link href="/checkout" className="uc-button-primary">
             Proceed to checkout
           </Link>
         </div>
