@@ -1,17 +1,16 @@
-# Dockerfile
-FROM node:18-alpine AS builder
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npx prisma generate
-RUN npm run build
-
 FROM node:18-alpine
+
 WORKDIR /app
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/prisma ./prisma
+
+RUN apk add --no-cache libc6-compat openssl
+
 COPY package*.json ./
+COPY apps ./apps
+COPY packages ./packages
+
+RUN npm ci --ignore-scripts
+RUN npx prisma generate --schema apps/api/prisma/schema.prisma
+
 EXPOSE 3001
-CMD ["npm", "run", "start"]
+
+CMD ["npm", "run", "dev", "--workspace=@universal-cart/api"]
