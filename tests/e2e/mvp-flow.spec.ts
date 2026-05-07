@@ -236,21 +236,21 @@ test('authenticated MVP shopping flow imports, matches, compares, and redirects'
   await page.locator('input[type="password"]').fill('correct-password');
   await page.getByRole('button', { name: 'Create account' }).click();
 
-  await expect(page.getByRole('heading', { name: 'Universal Cart Dashboard' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Universal cart command center' })).toBeVisible();
 
   await page.getByPlaceholder(/Paste product URL/).fill('https://www.amazon.com/dp/B09AIRPODS');
   await page.getByRole('button', { name: 'Add to Cart' }).click();
-  await expect(page.getByText('Apple AirPods Pro')).toBeVisible();
+  await expect(page.getByText('Apple AirPods Pro').first()).toBeVisible();
   await expect(page.getByText('Product groups').first()).toBeVisible();
 
   await page.getByRole('link', { name: 'Cart', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Your Universal Cart' })).toBeVisible();
-  await expect(page.getByText('Apple AirPods Pro')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Universal cart review' })).toBeVisible();
+  await expect(page.getByText('Apple AirPods Pro').first()).toBeVisible();
 
   await page.locator('select').selectOption('Target');
   await page.getByRole('button', { name: 'Find Matches' }).click();
   await expect(page.getByText('1 matched item.')).toBeVisible();
-  await expect(page.getByText('Matched to: Target')).toBeVisible();
+  await expect(page.getByText(/Routed to Target/)).toBeVisible();
   await expect(page.getByText('Target is cheaper after estimated rewards.')).toBeVisible();
 
   await page.getByRole('link', { name: 'Proceed to Checkout' }).click();

@@ -34,7 +34,7 @@ test('dashboard and account stay usable in a narrow mobile viewport', async ({ p
 
   await page.goto('/');
   await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Universal Cart Dashboard' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Universal cart command center' })).toBeVisible();
   await expect(page.getByLabel('Product URL')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add to Cart' })).toBeVisible();
   await expectNoHorizontalOverflow(page);
